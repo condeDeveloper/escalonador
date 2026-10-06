@@ -1,0 +1,55 @@
+name: testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ${{ matrix.so }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # O juiz e a ENUMERACAO DE TODAS AS ORDENS possiveis. Comparar duas
+      # politicas diz qual das duas e melhor; so a enumeracao diz se alguma delas
+      # e OTIMA, e e essa a pergunta que vale.
+      #
+      # Ela e fatorial e so cabe em cargas de menos de dez tarefas, que e
+      # exatamente o tamanho em que uma politica ruim ainda parece razoavel: com
+      # oito tarefas sao quarenta mil ordens, e o juiz olha todas.
+      #
+      # Nao ha thread nem relogio em lugar nenhum: medir ordem com relogio de
+      # parede e medir o escalonador do sistema por baixo, em vez do algoritmo em
+      # cima. Por isso os tres sistemas dao exatamente os mesmos numeros.
+      - name: testes
+        run: dotnet test testes/Escalonador.Testes/Escalonador.Testes.csproj -c Release --nologo -v q
+
+      - name: o juiz, todas as ordens possiveis
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- juiz
+
+      - name: as seis politicas em quatro cargas
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- politicas
+
+      # Uma tarefa de cem passos na frente de vinte de um passo multiplica a
+      # espera media do FIFO por dez.
+      - name: o efeito comboio
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- comboio
+
+      - name: o quantum do round-robin
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- quantum
+
+      # A melhor media vem com a pior vitima, e o envelhecimento e o conserto de
+      # uma linha.
+      - name: a media otima com uma vitima
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- fome
